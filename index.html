@@ -1,0 +1,101 @@
+<!-- index.html -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#08090f" />
+  <meta name="description" content="RandomChat — meet someone new, instantly." />
+  <title>RandomChat — Meet someone new</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="ambient ambient-a"></div><div class="ambient ambient-b"></div>
+  <div id="toast-root" aria-live="polite"></div>
+
+  <main id="app" class="app-shell">
+    <section id="auth-view" class="auth-view">
+      <div class="auth-brand">
+        <div class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></div>
+        <span>Random<span class="accent">Chat</span></span>
+      </div>
+      <div class="auth-card glass">
+        <div class="eyebrow">THE INTERNET'S COFFEE BREAK</div>
+        <h1>Meet someone<br/><span class="gradient-text">you've never met.</span></h1>
+        <p class="muted lead">One click. One stranger. A conversation that can go anywhere.</p>
+        <div class="auth-tabs" role="tablist">
+          <button class="tab active" data-auth-mode="login">Log in</button>
+          <button class="tab" data-auth-mode="signup">Create account</button>
+        </div>
+        <form id="auth-form">
+          <label class="field"><span>Email</span><input id="auth-email" type="email" autocomplete="email" placeholder="you@example.com" required /></label>
+          <label class="field"><span>Password</span><input id="auth-password" type="password" minlength="6" autocomplete="current-password" placeholder="••••••••" required /></label>
+          <label id="username-field" class="field hidden"><span>Username</span><input id="auth-username" type="text" maxlength="24" autocomplete="nickname" placeholder="Your display name" /></label>
+          <button id="auth-submit" class="btn btn-primary btn-wide" type="submit"><span>Continue</span><i data-lucide="arrow-right"></i></button>
+        </form>
+        <button id="google-auth" class="btn btn-ghost btn-wide"><i data-lucide="chrome"></i><span>Continue with Google</span></button>
+        <p class="fine-print">By continuing, you agree to be respectful. Don't share sensitive information with strangers.</p>
+      </div>
+      <div class="auth-footer"><span class="dot live"></span> <span id="online-count">A new conversation is waiting</span></div>
+    </section>
+
+    <section id="home-view" class="home-view hidden">
+      <header class="topbar">
+        <div class="auth-brand compact"><div class="brand-mark"><span></span><span></span><span></span></div><span>Random<span class="accent">Chat</span></span></div>
+        <div class="top-actions"><button id="profile-btn" class="icon-btn" title="Profile"><i data-lucide="user-round"></i></button><button id="logout-btn" class="btn btn-ghost"><i data-lucide="log-out"></i><span>Log out</span></button></div>
+      </header>
+      <div class="home-grid">
+        <section class="hero-panel">
+          <div class="orbital" aria-hidden="true"><div class="orbit orbit-1"></div><div class="orbit orbit-2"></div><div class="core"><div class="core-pulse"></div></div><div class="sat sat-1"></div><div class="sat sat-2"></div></div>
+          <div class="eyebrow">RANDOM MATCHMAKING</div>
+          <h2>Who will you<br/><span class="gradient-text">meet today?</span></h2>
+          <p class="muted lead">We match you with one person at a time. No follower counts. No feeds. Just a real conversation.</p>
+          <button id="find-btn" class="btn btn-primary btn-xl"><span>Find someone</span><i data-lucide="shuffle"></i></button>
+          <div class="safety-row"><span><i data-lucide="shield-check"></i> Report & block</span><span><i data-lucide="lock-keyhole"></i> Private by design</span></div>
+        </section>
+        <aside class="side-panel glass">
+          <div class="panel-title"><span>How it works</span><i data-lucide="sparkles"></i></div>
+          <div class="step"><b>01</b><div><strong>Tap Find someone</strong><p>Join the live matchmaking queue.</p></div></div>
+          <div class="step"><b>02</b><div><strong>Get paired</strong><p>We'll create a private room for two.</p></div></div>
+          <div class="step"><b>03</b><div><strong>Talk, share, connect</strong><p>Text, voice, video, or send a file.</p></div></div>
+          <div class="quote-card"><i data-lucide="quote"></i><p>“The best conversations are often with people you didn't plan to meet.”</p></div>
+        </aside>
+      </div>
+    </section>
+
+    <section id="chat-view" class="chat-view hidden">
+      <header class="chat-header">
+        <div class="chat-person"><div id="peer-avatar" class="avatar large">?</div><div><strong id="peer-name">Stranger</strong><span id="peer-status" class="status"><span class="dot live"></span> connected</span></div></div>
+        <div class="chat-actions"><button id="audio-call" class="icon-btn" title="Voice call"><i data-lucide="phone"></i></button><button id="video-call" class="icon-btn" title="Video call"><i data-lucide="video"></i></button><button id="more-chat" class="icon-btn" title="More"><i data-lucide="ellipsis"></i></button><button id="next-chat" class="btn btn-ghost"><i data-lucide="shuffle"></i><span>Next</span></button></div>
+      </header>
+      <div id="typing-bar" class="typing-bar hidden"><span class="typing-dots"><i></i><i></i><i></i></span><span id="typing-text">Stranger is typing…</span></div>
+      <div id="messages" class="messages"></div>
+      <div class="composer-wrap">
+        <div id="file-preview" class="file-preview hidden"></div>
+        <form id="message-form" class="composer"><button id="attach-btn" type="button" class="icon-btn"><i data-lucide="paperclip"></i></button><input id="message-input" maxlength="2000" autocomplete="off" placeholder="Say hello…" /><button id="emoji-btn" type="button" class="icon-btn"><i data-lucide="smile"></i></button><button class="send-btn" type="submit"><i data-lucide="arrow-up"></i></button><input id="file-input" type="file" hidden /></form>
+        <div class="composer-hint"><span><kbd>Enter</kbd> send</span><span>Files up to 25 MB • P2P encrypted by WebRTC</span></div>
+      </div>
+    </section>
+  </main>
+
+  <div id="call-modal" class="modal hidden">
+    <div class="call-backdrop"></div>
+    <div class="call-window glass">
+      <div class="call-top"><span id="call-label">Calling…</span><span id="call-timer">00:00</span></div>
+      <div id="remote-video-wrap" class="remote-video-wrap"><video id="remote-video" autoplay playsinline></video><div id="remote-placeholder" class="call-placeholder"><div id="call-avatar" class="avatar xl">?</div><strong id="call-peer-name">Stranger</strong><span id="call-state">Connecting…</span></div><video id="local-video" autoplay muted playsinline></video></div>
+      <div class="call-controls"><button id="toggle-mic" class="call-btn active"><i data-lucide="mic"></i></button><button id="toggle-camera" class="call-btn active"><i data-lucide="camera"></i></button><button id="end-call" class="call-btn danger"><i data-lucide="phone-off"></i></button></div>
+    </div>
+  </div>
+
+  <div id="profile-modal" class="modal hidden"><div class="call-backdrop"></div><div class="profile-window glass"><div class="modal-head"><h3>Your profile</h3><button id="close-profile" class="icon-btn"><i data-lucide="x"></i></button></div><div class="profile-big"><div id="profile-avatar" class="avatar xl">?</div><div><strong id="profile-username">User</strong><span id="profile-email" class="muted"></span></div></div><label class="field"><span>Display name</span><input id="profile-name-input" maxlength="24" /></label><button id="save-profile" class="btn btn-primary btn-wide">Save changes</button></div></div>
+
+  <div id="safety-modal" class="modal hidden"><div class="call-backdrop"></div><div class="profile-window glass safety-window"><div class="modal-head"><div><h3>Safety</h3><p class="muted modal-subtitle">Help keep RandomChat welcoming.</p></div><button id="close-safety" class="icon-btn"><i data-lucide="x"></i></button></div><label class="field"><span>Why are you reporting this person?</span><select id="report-reason"><option value="Harassment or bullying">Harassment or bullying</option><option value="Spam or scam">Spam or scam</option><option value="Inappropriate content">Inappropriate content</option><option value="Threatening behaviour">Threatening behaviour</option><option value="Other">Other</option></select></label><div class="safety-actions"><button id="report-peer" class="btn btn-ghost"><i data-lucide="flag"></i><span>Report</span></button><button id="block-peer" class="btn btn-danger"><i data-lucide="ban"></i><span>Block & leave</span></button></div><button id="cancel-safety" class="btn btn-wide">Cancel</button></div></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
+  <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+  <script type="module" src="src/app.js"></script>
+</body>
+</html>
