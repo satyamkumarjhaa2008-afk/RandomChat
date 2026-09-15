@@ -42,7 +42,7 @@ function App() {
   const messageBoxRef = useRef<HTMLDivElement>(null);
   const noticeTimerRef = useRef<number | null>(null);
   const reconnectTimerRef = useRef<number | null>(null);
-  const authEventRef = useRef<string | null>(null);
+  const restoreInFlightRef = useRef(false);
 
   const toast = useCallback((message: string) => {
     setNotice(message);
@@ -65,7 +65,7 @@ function App() {
   }, []);
 
   const enterChat = useCallback(async (nextChat: Chat, activeSession: Session) => {
-    if (nextChat.status !== 'active') return;
+    if (nextChat.status !== 'active' || (nextChat.user_a !== activeSession.user.id && nextChat.user_b !== activeSession.user.id)) return;
     await cleanupChannels();
     const peerId = nextChat.user_a === activeSession.user.id ? nextChat.user_b : nextChat.user_a;
     const [{ data: peerData, error: peerError }, { data: history, error: historyError }] = await Promise.all([
@@ -95,7 +95,7 @@ function App() {
       });
     });
     channel.on('broadcast', { event: 'ended' }, () => {
-      setChat(null); setPeer(null); setMessages([]); setNewMessages(0); setScreen('home'); toast('Your stranger ended the chat.');
+      setChat(null); setPeer(null); setMessages([]); setNewMessages(0); setSearching(false); setScreen('home'); toast('Your stranger ended the chat.');
     });
     await channel.subscribe((state) => {
       if (state === 'SUBSCRIBED') setConnection('online');
@@ -105,20 +105,19 @@ function App() {
   }, [cleanupChannels, toast]);
 
   const restore = useCallback(async (activeSession: Session) => {
+    if (restoreInFlightRef.current) return;
+    restoreInFlightRef.current = true;
     try {
       const loadedProfile = await loadProfile(activeSession.user.id);
-      if (!loadedProfile) {
-        toast('Your profile could not be loaded. Please try again.');
-        return;
-      }
+      if (!loadedProfile) { toast('Your profile could not be loaded. Please try again.'); return; }
       const { data, error } = await supabase.from('chats').select('id,user_a,user_b,status,created_at,ended_at').eq('status', 'active').or(`user_a.eq.${activeSession.user.id},user_b.eq.${activeSession.user.id}`).limit(1).maybeSingle();
       if (error) throw error;
       if (data) await enterChat(data, activeSession);
-      else { setChat(null); setPeer(null); setMessages([]); setScreen('home'); }
+      else { setChat(null); setPeer(null); setMessages([]); setSearching(false); setScreen('home'); }
     } catch (error) {
       toast(getErrorMessage(error, 'Could not restore your session.'));
       setScreen('home');
-    }
+    } finally { restoreInFlightRef.current = false; }
   }, [enterChat, loadProfile, toast]);
 
   const rejoinRealtime = useCallback(async () => {
@@ -140,12 +139,8 @@ function App() {
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, nextSession) => {
       if (!mounted) return;
-      authEventRef.current = event;
       setSession(nextSession);
-      if (event === 'PASSWORD_RECOVERY') {
-        setScreen('auth'); setAuthMode('reset'); setPassword('');
-        return;
-      }
+      if (event === 'PASSWORD_RECOVERY') { setScreen('auth'); setAuthMode('reset'); setPassword(''); return; }
       if (nextSession) {
         if (event !== 'INITIAL_SESSION' || window.location.pathname !== '/reset-password') void restore(nextSession);
       } else {
@@ -165,10 +160,7 @@ function App() {
   const leaveQueue = useCallback(async () => {
     setSearching(false);
     if (queueRef.current) { await supabase.removeChannel(queueRef.current); queueRef.current = null; }
-    if (session) {
-      const { error } = await supabase.rpc('leave_match_queue');
-      if (error) toast(getErrorMessage(error, 'Could not cancel search.'));
-    }
+    if (session) { const { error } = await supabase.rpc('leave_match_queue'); if (error) toast(getErrorMessage(error, 'Could not cancel search.')); }
   }, [session, toast]);
 
   const find = useCallback(async () => {
@@ -211,7 +203,7 @@ function App() {
 
   const send = async (event: FormEvent) => {
     event.preventDefault();
-    if (!chat || !session || busy || !navigator.onLine) return;
+    if (!chat || !session || busy || connection !== 'online') return;
     const body = text.trim();
     if (!body) return;
     if (body.length > MAX_MESSAGE) { toast(`Messages are limited to ${MAX_MESSAGE} characters.`); return; }
@@ -239,7 +231,7 @@ function App() {
       }
       if (authMode === 'signup') {
         const cleanUsername = username.trim();
-        if (cleanUsername.length < 2) throw new Error('Choose a username with at least 2 characters.');
+        if (cleanUsername.length < 2 || cleanUsername.length > 24) throw new Error('Choose a username with 2–24 characters.');
         if (password.length < MIN_PASSWORD) throw new Error(`Use a password with at least ${MIN_PASSWORD} characters.`);
         const { data, error } = await supabase.auth.signUp({ email: email.trim(), password, options: { data: { username: cleanUsername } } });
         if (error) throw error;
