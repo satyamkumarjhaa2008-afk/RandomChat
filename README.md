@@ -1,63 +1,82 @@
 # RandomChat
 
-A polished 1-to-1 random conversation MVP built as a dependency-light static web app with Supabase and WebRTC.
+RandomChat is a production-oriented anonymous 1-to-1 chat MVP: authenticate, enter the matchmaking queue, meet one stranger, message in real time, skip/end safely, and report or block users.
 
-## Included MVP
+## Stack
 
-- Email/password authentication
-- Google OAuth button (requires Google provider setup in Supabase)
-- Automatic user profiles and editable display names
-- Live random matchmaking queue
-- Real-time 1-to-1 messaging
-- Typing indicators and online presence
-- Next-chat and end-chat controls
-- Voice calls with WebRTC
-- Video calls with WebRTC
-- Mic/camera controls and call timer
-- P2P file transfer over WebRTC DataChannel (25 MB limit)
-- Report and block controls
-- Block-aware matchmaking
-- Row-level security for user data and safety tables
-- Supabase Realtime signaling and chat events
-- Responsive glassmorphism UI, GSAP motion, and Lucide icons
+- React 19 + TypeScript
+- Vite
+- Supabase Auth + PostgreSQL + RLS + Realtime
+- Zod-ready validation boundary
+- Vitest
+- GitHub Actions CI
+- Vercel-compatible static build
 
-## Run locally
+## Local development
 
-This app is intentionally dependency-light. Serve it over HTTP(S); do not open `index.html` directly because browser module imports require an origin.
+1. Install Node.js 22+.
+2. Copy `.env.example` to `.env.local`.
+3. Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` using the Supabase project's browser-safe values.
+4. Run:
 
 ```bash
-python -m http.server 5173
+npm install
+npm run dev
 ```
 
-Open <http://localhost:5173>.
+Open the URL printed by Vite.
 
-## Supabase setup
-
-The frontend uses the RandomChat Supabase project and the browser-safe publishable key in `src/config.js`. Never put a service-role or secret key in client code.
-
-The repository contains the SQL migrations used for the MVP:
-
-- `20260915153204_randomchat_mvp_security_and_signaling.sql`
-- `20260915190000_safety_reports_and_blocking.sql`
-
-Google sign-in must be enabled in **Supabase Dashboard → Authentication → Providers → Google**, with your local/deployed URL configured as an allowed redirect URL.
-
-## Production WebRTC
-
-STUN is configured for development. Production deployments should add a TURN server to `src/config.js` so calls can connect across restrictive NATs/firewalls. Use credentials issued by your TURN provider; never hard-code a long-lived provider secret.
-
-## Security notes
-
-- Browser code only uses the Supabase publishable key.
-- Exposed tables have RLS policies.
-- Matchmaking runs through an authenticated RPC and excludes users blocked in either direction.
-- Reports and blocks are scoped to the authenticated user.
-- File transfer is peer-to-peer; files are not persisted by RandomChat.
-
-## Validation
+Validation commands:
 
 ```bash
-npm run check
+npm run typecheck
+npm run lint
+npm run test
+npm run build
 ```
 
-The check validates the JavaScript syntax.
+## Supabase
+
+The live RandomChat project is PostgreSQL 17 with RLS enabled on the application tables. Matchmaking is performed by the authenticated `find_match()` RPC and uses row locking plus unique active-chat indexes to protect against concurrent claims.
+
+Migrations live under `supabase/migrations/`. Apply them through the Supabase CLI/dashboard workflow used by the project. Never paste service-role credentials into frontend code.
+
+Authentication providers and redirect URLs must be configured in Supabase Authentication. For local development allow the local Vite origin; for production allow the actual Vercel domain. Do not guess a production hostname in source code.
+
+## Architecture
+
+`src/main.tsx` owns the MVP UI/state flow. Supabase Realtime uses one scoped channel per active conversation and one queue channel while searching. Messages are stored in PostgreSQL and protected by RLS. Conversation lifecycle changes use the `end_chat()` RPC. Block-aware matchmaking checks both directions of the block relationship.
+
+The database contains profiles, queue entries, chats, messages, reports, blocks, and the existing call-event table. Active conversations are constrained so a user cannot be in two active chats simultaneously.
+
+## Security
+
+- Only publishable Supabase credentials belong in `VITE_*` variables.
+- Service-role keys must remain server-side and are not required by this frontend.
+- RLS protects application tables.
+- Chat updates are not exposed through a general participant UPDATE policy; lifecycle changes use the controlled RPC.
+- Message content is rendered as React text, not HTML.
+- Messages are limited to 2,000 characters and have an authoritative database rate limit.
+- Reports require the reporter to be the authenticated user and, when a chat is supplied, a participant in that chat.
+- Blocks cannot target the current user.
+
+## Deployment to Vercel
+
+Connect the GitHub repository to Vercel. Vercel should detect Vite automatically.
+
+Set these environment variables in Development, Preview, and Production as appropriate:
+
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_PUBLISHABLE_KEY`
+
+Then deploy. The GitHub Actions workflow also runs install, typecheck, lint, tests, and a production build on pushes/PRs.
+
+## Current limitations
+
+- The core MVP is text chat; the previous WebRTC voice/video/file-transfer implementation was removed from the active frontend during the architecture migration rather than being represented as production-ready functionality. TURN configuration is therefore not part of the current MVP.
+- Automated content moderation is not implemented. Reporting and blocking are the authoritative MVP safety tools.
+- Password reset and a richer profile/settings surface still require the corresponding UI flow to be added before they should be advertised as complete.
+
+## Product principles
+
+RandomChat collects minimal profile information, does not fabricate social proof, and keeps safety controls visible. The target experience is fast, calm, accessible, mobile-friendly, and reliable under duplicate clicks, refreshes, and realtime reconnects.
